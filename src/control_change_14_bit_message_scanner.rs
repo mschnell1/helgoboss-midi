@@ -28,8 +28,10 @@ use crate::{
 /// ```
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 pub struct ControlChange14BitMessageScanner {
-    scanner_by_channel: [ScannerForOneChannel; 16],
+    control_change_14_bit_scanner_by_channel: [ScannerForOneChannel; 16],
 }
+
+
 
 impl ControlChange14BitMessageScanner {
     /// Creates a new scanner.
@@ -42,12 +44,12 @@ impl ControlChange14BitMessageScanner {
     /// Returns the 14-bit Control Change message if one has been detected.  
     pub fn feed(&mut self, msg: &impl ShortMessage) -> Option<ControlChange14BitMessage> {
         let channel = msg.channel()?;
-        self.scanner_by_channel[usize::from(channel)].feed(msg)
+        self.control_change_14_bit_scanner_by_channel[usize::from(channel)].feed(msg)
     }
 
     /// Resets the scanner discarding all intermediate scanning progress.
     pub fn reset(&mut self) {
-        for p in self.scanner_by_channel.iter_mut() {
+        for p in self.control_change_14_bit_scanner_by_channel.iter_mut() {
             p.reset();
         }
     }
