@@ -181,19 +181,21 @@ impl ControlChange14BitScannerForOneChannel {
         lsb_controller_number: ControllerNumber,
         value_lsb: U7,
     ) -> Option<ControlChange14BitMessage> {
-        let v = self.values[usize::from(lsb_controller_number)];
+        let msb_controller_number = lsb_controller_number.corresponding_14_bit_msb_controller_number()?;
+        let v = self.values[usize::from(msb_controller_number)];
         if v.is_none() {
-            self.values[usize::from(lsb_controller_number)] = Some(ControlChange14Value{value_lsb: Some(value_lsb), value_msb: None});
+            self.values[usize::from(msb_controller_number)] = Some(ControlChange14Value{value_lsb: Some(value_lsb), value_msb: None});
             return None;
         }
         let msb = v?.value_msb; 
         self.values[usize::from(lsb_controller_number)] = Some(ControlChange14Value{value_lsb: Some(value_lsb), value_msb: msb});
-        let value = build_14_bit_value_from_two_7_bit_values(msb?, vaue_lsb?);
+        let value = build_14_bit_value_from_two_7_bit_values(msb?, value_lsb);
         Some(ControlChange14BitMessage::new(
             channel,
             msb_controller_number,
             value,
         ))
+    }
 }
 
 
