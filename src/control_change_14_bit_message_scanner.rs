@@ -1,6 +1,8 @@
+use core::convert::TryInto;
+
 use crate::{
     build_14_bit_value_from_two_7_bit_values, Channel, ControlChange14BitMessage, ControllerNumber,
-    ShortMessage, StructuredShortMessage, U7,
+    ShortMessage, StructuredShortMessage, U7, U14
 };
 
 /// Scanner for detecting 14-bit Control Change messages in a stream of short MIDI messages.
@@ -119,7 +121,7 @@ impl ScannerForOneChannel {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 struct ControlChange14Value {
-    value_14__bit: Option<U7>,
+    value_14_bit: Option<U14>,
 
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
@@ -143,9 +145,12 @@ impl ControlChange14BitScannerForOneChannel {
         }
     }
 
-    fn reset(&mut self) {
-        self.msb_controller_number = None;
-        self.value_msb = None;
+    fn reset_all(&mut self) {
+        self.values.fill(ControlChange14Value::default());
+    }
+
+    fn reset(&mut self, controller_number: ControllerNumber) {
+        self.values[usize::from(controller_number)] = ControlChange14Value::default();
     }
 
     fn process_value_msb(
@@ -153,8 +158,10 @@ impl ControlChange14BitScannerForOneChannel {
         msb_controller_number: ControllerNumber,
         value_msb: U7,
     ) -> Option<ControlChange14BitMessage> {
-        self.msb_controller_number = Some(msb_controller_number);
-        self.value_msb = Some(value_msb);
+        let v:u16 = value_msb.into();
+        let v = v << 7;
+        let v:  U14 = v.try_into().ok()?;
+        self.values[usize::from(msb_controller_number)] = ControlChange14Value{value_14_bit: Some(v)};
         None
     }
 
