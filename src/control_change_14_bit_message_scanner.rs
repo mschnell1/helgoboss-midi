@@ -217,4 +217,30 @@ mod tests {
         assert_eq!(result_4.lsb_controller_number(), cn(35));
         assert_eq!(result_4.value(), u14(1058));
     }
+
+    #[test]
+    fn should_return_14_bit_result_message_on_second_lsb_short_message_disturbed() {
+        // testing the scanner's ability to handle messages that are not in any orrder while unrelated messages com in
+        // Given
+        let mut scanner = ControlChange14BitMessageScanner::new();
+        // When
+        let result_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(8)));
+        println!("result_1: {:?}", result_1);
+
+        // unrelated messages
+        let result_1_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(3), u7(1)));
+        println!("result_1_1: {:?}", result_1_1);
+
+        let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
+        println!("result_2: {:?}", result_2);
+
+        // Then
+        assert_eq!(result_1, None);
+        let result_2 = result_2.unwrap();
+        assert_eq!(result_2.channel(), ch(5));
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_2.lsb_controller_number(), cn(34));
+        assert_eq!(result_2.value(), u14(1057));
+        //        assert!(false);
+    }
 }
