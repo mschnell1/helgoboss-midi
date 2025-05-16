@@ -121,12 +121,13 @@ impl ScannerForOneChannel {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 struct ControlChange14Value {
-    value_14_bit: Option<U14>,
+    value_msb: Option<U7>,
+    value_lsb: Option<U7>,
 
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 struct ControlChange14BitScannerForOneChannel {
-    values: [ControlChange14Value; 32],
+    values: [Option<ControlChange14Value>; 32],
 }
 
 impl ControlChange14BitScannerForOneChannel {
@@ -146,11 +147,11 @@ impl ControlChange14BitScannerForOneChannel {
     }
 
     fn reset_all(&mut self) {
-        self.values.fill(ControlChange14Value::default());
+        self.values.fill(None);
     }
 
     fn reset(&mut self, controller_number: ControllerNumber) {
-        self.values[usize::from(controller_number)] = ControlChange14Value::default();
+        self.values[usize::from(controller_number)] = Some(ControlChange14Value{value_lsb: None, value_msb: None});
     }
 
     fn process_value_msb(
@@ -158,34 +159,20 @@ impl ControlChange14BitScannerForOneChannel {
         msb_controller_number: ControllerNumber,
         value_msb: U7,
     ) -> Option<ControlChange14BitMessage> {
-        let v:u16 = value_msb.into();
-        let v = v << 7;
-        let v:  U14 = v.try_into().ok()?;
-        self.values[usize::from(msb_controller_number)] = ControlChange14Value{value_14_bit: Some(v)};
+        let v = self.values[usize::from(msb_controller_number)]?;
+        let lsb = v.value_lsb; 
+        self.values[usize::from(msb_controller_number)] = Some(ControlChange14Value{value_lsb: lsb, value_msb: Some(value_msb)});
         None
     }
 
     fn process_value_lsb(
-        &mut self,
-        channel: Channel,
-        lsb_controller_number: ControllerNumber,
+        &mut self,        lsb_controller_number: ControllerNumber,
         value_lsb: U7,
     ) -> Option<ControlChange14BitMessage> {
-        let msb_controller_number = self.msb_controller_number?;
-        let value_msb = self.value_msb?;
-        if lsb_controller_number
-            != msb_controller_number
-                .corresponding_14_bit_lsb_controller_number()
-                .expect("impossible")
-        {
-            return None;
-        }
-        let value = build_14_bit_value_from_two_7_bit_values(value_msb, value_lsb);
-        Some(ControlChange14BitMessage::new(
-            channel,
-            msb_controller_number,
-            value,
-        ))
+        let v = self.values[usize::from(lsb_controller_number)]?;
+        let msb = v.value_msb; 
+        self.values[usize::from(lsb_controller_number)] = Some(ControlChange14Value{value_lsb: msb, value_msb: Some(value_lsb)});
+        None
     }
 }
 
@@ -290,9 +277,9 @@ mod tests {
         let result_4 = result_4.unwrap();
         assert_eq!(result_4.channel(), ch(5));
         assert_eq!(result_4.msb_controller_number(), cn(3));
-        assert_eq!(result_4.lsb_controller_number(), cn(35));
         assert_eq!(result_4.value(), u14(1058));
     }
+    assert_eq!(result_4.lsb_controller_number(), cn(35));
 
     #[test]
     fn should_return_14_bit_result_message_on_second_lsb_short_message_disturbed() {
