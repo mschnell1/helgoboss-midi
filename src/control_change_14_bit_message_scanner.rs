@@ -156,24 +156,44 @@ impl ControlChange14BitScannerForOneChannel {
 
     fn process_value_msb(
         &mut self,
+        channel: Channel,
         msb_controller_number: ControllerNumber,
         value_msb: U7,
     ) -> Option<ControlChange14BitMessage> {
-        let v = self.values[usize::from(msb_controller_number)]?;
-        let lsb = v.value_lsb; 
+        let v = self.values[usize::from(msb_controller_number)];
+        if v.is_none() {
+            self.values[usize::from(msb_controller_number)] = Some(ControlChange14Value{value_lsb: None, value_msb: Some(value_msb)});
+            return None;
+        }
+        let lsb = v?.value_lsb; 
         self.values[usize::from(msb_controller_number)] = Some(ControlChange14Value{value_lsb: lsb, value_msb: Some(value_msb)});
-        None
+        let value = build_14_bit_value_from_two_7_bit_values(value_msb, lsb?);
+        Some(ControlChange14BitMessage::new(
+            channel,
+            msb_controller_number,
+            value,
+        ))
     }
 
     fn process_value_lsb(
-        &mut self,        lsb_controller_number: ControllerNumber,
+        &mut self,
+        channel: Channel,
+        lsb_controller_number: ControllerNumber,
         value_lsb: U7,
     ) -> Option<ControlChange14BitMessage> {
-        let v = self.values[usize::from(lsb_controller_number)]?;
-        let msb = v.value_msb; 
-        self.values[usize::from(lsb_controller_number)] = Some(ControlChange14Value{value_lsb: msb, value_msb: Some(value_lsb)});
-        None
-    }
+        let v = self.values[usize::from(lsb_controller_number)];
+        if v.is_none() {
+            self.values[usize::from(lsb_controller_number)] = Some(ControlChange14Value{value_lsb: Some(value_lsb), value_msb: None});
+            return None;
+        }
+        let msb = v?.value_msb; 
+        self.values[usize::from(lsb_controller_number)] = Some(ControlChange14Value{value_lsb: Some(value_lsb), value_msb: msb});
+        let value = build_14_bit_value_from_two_7_bit_values(msb?, vaue_lsb?);
+        Some(ControlChange14BitMessage::new(
+            channel,
+            msb_controller_number,
+            value,
+        ))
 }
 
 
