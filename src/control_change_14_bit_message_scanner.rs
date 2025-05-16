@@ -28,7 +28,7 @@ use crate::{
 /// ```
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 pub struct ControlChange14BitMessageScanner {
-    control_change_14_bit_scanner_by_channel: [ScannerForOneChannel; 16],
+    control_change_14_bit_scanner_by_channel: [ControlChange14BitScannerForOneChannel; 16],
 }
 
 
@@ -115,6 +115,73 @@ impl ScannerForOneChannel {
         ))
     }
 }
+
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+struct ControlChange14Value {
+    value_14__bit: Option<U7>,
+
+}
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+struct ControlChange14BitScannerForOneChannel {
+    values: [ControlChange14Value; 32],
+}
+
+impl ControlChange14BitScannerForOneChannel {
+    fn feed(&mut self, msg: &impl ShortMessage) -> Option<ControlChange14BitMessage> {
+        match msg.to_structured() {
+            StructuredShortMessage::ControlChange {
+                controller_number,
+                channel,
+                control_value,
+            } => match controller_number.get() {
+                (0..=31) => self.process_value_msb(controller_number, control_value),
+                (32..=63) => self.process_value_lsb(channel, controller_number, control_value),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.msb_controller_number = None;
+        self.value_msb = None;
+    }
+
+    fn process_value_msb(
+        &mut self,
+        msb_controller_number: ControllerNumber,
+        value_msb: U7,
+    ) -> Option<ControlChange14BitMessage> {
+        self.msb_controller_number = Some(msb_controller_number);
+        self.value_msb = Some(value_msb);
+        None
+    }
+
+    fn process_value_lsb(
+        &mut self,
+        channel: Channel,
+        lsb_controller_number: ControllerNumber,
+        value_lsb: U7,
+    ) -> Option<ControlChange14BitMessage> {
+        let msb_controller_number = self.msb_controller_number?;
+        let value_msb = self.value_msb?;
+        if lsb_controller_number
+            != msb_controller_number
+                .corresponding_14_bit_lsb_controller_number()
+                .expect("impossible")
+        {
+            return None;
+        }
+        let value = build_14_bit_value_from_two_7_bit_values(value_msb, value_lsb);
+        Some(ControlChange14BitMessage::new(
+            channel,
+            msb_controller_number,
+            value,
+        ))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
