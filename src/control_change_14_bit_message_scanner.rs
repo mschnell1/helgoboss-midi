@@ -325,16 +325,15 @@ mod tests {
         // Then
         assert_eq!(result_1, None);
         assert_eq!(result_2, None);
-//        assert_eq!(result_3, None);  //TODO should not be none !!!
+        //        assert_eq!(result_3, None);
         let result_3 = result_3.unwrap();
         assert_eq!(result_3.value(), u14(1057));
         let result_4 = result_4.unwrap();
         assert_eq!(result_4.channel(), ch(5));
         assert_eq!(result_4.msb_controller_number(), cn(3));
         assert_eq!(result_4.value(), u14(1058));
+        assert_eq!(result_4.lsb_controller_number(), cn(35));
     }
-    //    println!("result_4: {:?}", result_4);   // TODO Macro error ? ???
-    // assert_eq!(result_4.lsb_controller_number(), cn(35));  // TODO Macro error ? ???
 
     #[test]
     fn should_return_14_bit_result_message_on_second_lsb_short_message_disturbed() {
