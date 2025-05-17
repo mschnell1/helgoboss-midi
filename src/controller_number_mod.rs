@@ -55,7 +55,6 @@ impl ControllerNumber {
         Some(ControllerNumber(self.0 + 32))
     }
 
-
     pub fn corresponding_14_bit_msb_controller_number(&self) -> Option<ControllerNumber> {
         if self.0 < 32 {
             return None;
