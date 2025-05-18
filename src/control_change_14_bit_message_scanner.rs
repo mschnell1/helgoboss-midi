@@ -174,7 +174,6 @@ impl ControlChange14BitScannerForOneChannel {
                 self.values[usize::from(msb_controller_number)].value_msb = Some(value_msb);
             }
         };
-
         let value = build_14_bit_value_from_two_7_bit_values(value_msb, cc.value_lsb?);
         Some(ControlChange14BitMessage::new(
             channel,
@@ -298,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn should_only_consider_last_incoming_msb() {   
+    fn should_only_consider_last_incoming_msb() {
         // Given
         let mut scanner = ControlChange14BitMessageScanner::new();
         // When
@@ -329,19 +328,119 @@ mod tests {
         println!("result_1: {:?}", result_1);
 
         // unrelated messages
-        //        let result_1_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(3), u7(1)));
-        //      println!("result_1_1: {:?}", result_1_1);
+        let result_1_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(3), u7(1)));
+        println!("result_1_1: {:?}", result_1_1);
 
         let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
         println!("result_2: {:?}", result_2);
 
         // Then
-        //        assert_eq!(result_1, None);
+        assert_eq!(result_1, None);
         let result_2 = result_2.unwrap();
-        //        assert_eq!(result_2.channel(), ch(5));
-        //        assert_eq!(result_2.msb_controller_number(), cn(2));
-        //        assert_eq!(result_2.lsb_controller_number(), cn(34));
-        //        assert_eq!(result_2.value(), u14(1057));
+        assert_eq!(result_2.channel(), ch(5));
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_2.lsb_controller_number(), cn(34));
+        assert_eq!(result_2.value(), u14(1057));
         // assert!(false);
+    }
+
+    #[test]
+    fn order_of_incoming_messages_1() {
+        // Given
+        let mut scanner = ControlChange14BitMessageScanner::new();
+        // When
+        let result_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(8)));
+        let result_3 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
+        let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(3), u7(8)));
+        let result_4 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(35), u7(34)));
+        // Then
+        assert_eq!(result_1, None);
+        assert_eq!(result_2, None);
+        let result_3 = result_3.unwrap();
+        assert_eq!(result_3.value(), u14(1057));
+        let result_4 = result_4.unwrap();
+        assert_eq!(result_4.channel(), ch(5));
+        assert_eq!(result_4.msb_controller_number(), cn(3));
+        assert_eq!(result_4.value(), u14(1058));
+        assert_eq!(result_4.lsb_controller_number(), cn(35));
+    }
+
+    #[test]
+    fn order_of_incoming_messages_2() {
+        // Given
+        let mut scanner = ControlChange14BitMessageScanner::new();
+        // When
+        let result_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(8)));
+        let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(35), u7(34)));
+        let result_3 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
+        let result_4 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(3), u7(8)));
+        // Then
+        assert_eq!(result_1, None);
+        assert_eq!(result_2, None);
+        let result_3 = result_3.unwrap();
+        assert_eq!(result_3.value(), u14(1057));
+        let result_4 = result_4.unwrap();
+        assert_eq!(result_4.channel(), ch(5));
+        assert_eq!(result_4.msb_controller_number(), cn(3));
+        assert_eq!(result_4.value(), u14(1058));
+        assert_eq!(result_4.lsb_controller_number(), cn(35));
+    }
+
+    #[test]
+    fn should_return_14_bit_result_message_on_second_msb_short_message() {
+        // Given
+        let mut scanner = ControlChange14BitMessageScanner::new();
+        // When
+        let result_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
+        let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(8)));
+        // Then
+        assert_eq!(result_1, None);
+        let result_2 = result_2.unwrap();
+        assert_eq!(result_2.channel(), ch(5));
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_2.lsb_controller_number(), cn(34));
+        assert_eq!(result_2.value(), u14(1057));
+    }
+
+    #[test]
+    fn update_lsb() {
+        // Given
+        let mut scanner = ControlChange14BitMessageScanner::new();
+        // When
+        let result_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(8)));
+        let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
+        let result_3 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(34)));
+        // Then
+        assert_eq!(result_1, None);
+        let result_2 = result_2.unwrap();
+        assert_eq!(result_2.channel(), ch(5));
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_2.lsb_controller_number(), cn(34));
+        assert_eq!(result_2.value(), u14(1057));
+        let result_3 = result_3.unwrap();
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_3.lsb_controller_number(), cn(34));
+        assert_eq!(result_3.value(), u14(1058));
+    }
+
+    #[test]
+    fn update_msb() {
+        // Given
+        let mut scanner = ControlChange14BitMessageScanner::new();
+        // When
+        let result_1 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(8)));
+        let result_2 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(34), u7(33)));
+        let result_3 = scanner.feed(&RawShortMessage::control_change(ch(5), cn(2), u7(9)));
+        // Then
+        assert_eq!(result_1, None);
+        let result_2 = result_2.unwrap();
+        assert_eq!(result_2.channel(), ch(5));
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_2.lsb_controller_number(), cn(34));
+        assert_eq!(result_2.value(), u14(1057));
+        let result_3 = result_3.unwrap();
+        assert_eq!(result_2.msb_controller_number(), cn(2));
+        assert_eq!(result_3.lsb_controller_number(), cn(34));
+        assert_eq!(result_3.value(), u14(9 * 128 + 33));
     }
 }
