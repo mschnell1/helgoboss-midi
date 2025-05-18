@@ -163,27 +163,19 @@ impl ControlChange14BitScannerForOneChannel {
         value_msb: U7,
     ) -> Option<ControlChange14BitMessage> {
         let cc = self.values[usize::from(msb_controller_number)];
-        let lsb = match cc.value_msb {
+        match cc.value_msb {
             Some(msb) => {
                 if msb == value_msb {
                     return None;
                 };
-                self.values[usize::from(msb_controller_number)] = ControlChange14Value {
-                    value_lsb: cc.value_lsb,
-                    value_msb: Some(value_msb),
-                };
-                cc.value_lsb
+                self.values[usize::from(msb_controller_number)].value_msb = Some(value_msb);
             }
             None => {
-                self.values[usize::from(msb_controller_number)] = ControlChange14Value {
-                    value_lsb: cc.value_lsb,
-                    value_msb: Some(value_msb),
-                };
-                cc.value_lsb
+                self.values[usize::from(msb_controller_number)].value_msb = Some(value_msb);
             }
         };
 
-        let value = build_14_bit_value_from_two_7_bit_values(value_msb, lsb?);
+        let value = build_14_bit_value_from_two_7_bit_values(value_msb, cc.value_lsb?);
         Some(ControlChange14BitMessage::new(
             channel,
             msb_controller_number,
@@ -200,27 +192,19 @@ impl ControlChange14BitScannerForOneChannel {
         let msb_controller_number =
             lsb_controller_number.corresponding_14_bit_msb_controller_number()?;
         let cc = self.values[usize::from(msb_controller_number)];
-        let msb = match cc.value_msb {
+        match cc.value_msb {
             Some(lsb) => {
                 if lsb == value_lsb {
                     return None;
                 };
-                self.values[usize::from(msb_controller_number)] = ControlChange14Value {
-                    value_msb: cc.value_msb,
-                    value_lsb: Some(value_lsb),
-                };
-                cc.value_msb
+                self.values[usize::from(msb_controller_number)].value_lsb = Some(value_lsb);
             }
             None => {
-                self.values[usize::from(msb_controller_number)] = ControlChange14Value {
-                    value_msb: cc.value_msb,
-                    value_lsb: Some(value_lsb),
-                };
-                cc.value_msb
+                self.values[usize::from(msb_controller_number)].value_lsb = Some(value_lsb);
             }
         };
 
-        let value = build_14_bit_value_from_two_7_bit_values(msb?, value_lsb);
+        let value = build_14_bit_value_from_two_7_bit_values(cc.value_msb?, value_lsb);
         Some(ControlChange14BitMessage::new(
             channel,
             msb_controller_number,
@@ -314,7 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn should_only_consider_last_incoming_msb() {
+    fn should_only_consider_last_incoming_msb() {   
         // Given
         let mut scanner = ControlChange14BitMessageScanner::new();
         // When
